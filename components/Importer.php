@@ -36,6 +36,7 @@ class Importer extends ComponentBase
         }
     }
 
+    
     public function onRun()
     {
         $this->files = $this->loadAviableFiles();
@@ -44,93 +45,95 @@ class Importer extends ComponentBase
         $this->addJs('assets/js/standalone/selectize.js');
     }
 
+    /**
+     * Загрузка файла csv
+     * @return array
+     */
     public function onUpload()
     {
         $csv = Input::file('csv');
-
         $file = (new File(['field' => 'CSV-IMPORTER']))->fromPost($csv);
-
         $file->save();
 
         return [
             '.aviable-csv' => $this->renderPartial('@_files', ['files' => $this->loadAviableFiles()]),
         ];
-
     }
 
+    /**
+     * Загрузка уже загруженных файлов
+     * @return mixed
+     */
     public function loadAviableFiles()
     {
-
         return File::where('field', 'CSV-IMPORTER')->get();
-
     }
 
+    /**
+     * Удаление файла csv
+     * @return array|null
+     */
     public function onDeleteCSV()
     {
-
         $file = $this->getCSVFile();
-
         if (is_null($file)) {
             return null;
         }
-
         $file->delete();
-
         Flash::success('Файл удален');
 
         return [
             '.aviable-csv' => $this->renderPartial('@_files', ['files' => $this->loadAviableFiles()]),
         ];
-
     }
 
+    /**
+     * Выбрать файл из списка
+     * @return array|null
+     */
     public function onSelectCSV()
     {
-
         $file = $this->getCSVFile();
-
         if (is_null($file)) {
             return null;
         }
-
         $rows = $this->parseCSV($file);
 
         return [
             '.csv-settings' => $this->renderPartial('@_info', compact('rows', 'file')),
         ];
-
     }
 
+    /**
+     * Cохранить настройки
+     * @return |null
+     */
     public function onSave()
     {
-
         $file = $this->getCSVFile();
-
         if (is_null($file)) {
             return null;
         }
-
         $file->description = post('config');
         $file->save();
-
     }
 
+    /**
+     * Импорт
+     * @return |null
+     */
     public function onImport()
     {
-
         $file = $this->getCSVFile();
-
         if (is_null($file)) {
             return null;
         }
-
         $configs = [];
         $rows = [];
         $logs = [];
 
         $configs = Yaml::parse($file->description);
         $rows = $this->parseCSV($file);
-
         unset($rows[0]);
 
         foreach ($configs as $type) {
@@ -142,31 +145,22 @@ class Importer extends ComponentBase
         foreach ($rows as $rowIndex => $row) {
             $types = [];
             foreach ($configs as $typeName => $config) {
-
                 $obj = new $config['model'];
                 $uniques = [];
-
                 if (isset($config['unique'])) {
                     $uniques = explode(',', $config['unique']);
                 }
-
-                $primaryKey = $config['primaryKey']??'id';
-
+                $primaryKey = $config['primaryKey'] ?? 'id';
 
                 foreach ($config['fields'] as $field => $column) {
-
                     if (substr($column, 0, 7) === "column-") {
                         $columnID = str_replace('column-', '', $column);
                         $obj->{$field} = trim($row[$columnID]);
-                    } else if (substr($column, 0, 1) === "@") {
-                        //  var_dump($column);
-
+                    } elseif (substr($column, 0, 1) === "@") {
                         $result = (new Field($column, $types, $row, $obj))->do();
-
                         if (isset($result['is_object_value'])) {
                             $obj->{$field} = $result['value'];
                         }
-
                     }
                 }
                 $obj->is_parsed = $file->id;
@@ -183,25 +177,16 @@ class Importer extends ComponentBase
                 if (!is_null($exists)) {
                     $types[$typeName] = $exists;
                 } else {
-
-                    try{
+                    try {
                         $obj->save();
-                    }catch(\Exception $e){
-                        $logs['error'][$config['model']][] = $rowIndex.' '.$typeName.' '.$e->getMessage();
+                    } catch (\Exception $e) {
+                        $logs['error'][$config['model']][] = $rowIndex . ' ' . $typeName . ' ' . $e->getMessage();
                         continue 2;
                     }
-
-
                     $logs['added'][$config['model']][] = $obj->{$primaryKey};
-
                     $types[$typeName] = $obj;
-
-
                 }
-
-
             }
-
         }
 
         foreach ($configs as $type) {
@@ -211,30 +196,41 @@ class Importer extends ComponentBase
                 'errors' => $logs['error'][$type['model']],
             ]);
         }
-
     }
 
-    public function onLoadRow(){
+    /**
+     * Загрузка данных по индексу
+     * @return array
+     */
+    public function onLoadRow()
+    {
         $file = $this->getCSVFile();
         $rows = $this->parseCSV($file);
         $index = post('row');
         return [
-            '#rowBody' => $this->renderPartial('@_row', compact('rows','index'))
+            '#rowBody' => $this->renderPartial('@_row', compact('rows', 'index'))
         ];
     }
 
+    /**
+     * Модель файла csv
+     * @return |null
+     */
     public function getCSVFile()
     {
-
         if (is_null(post('name'))) {
             return null;
         }
-
         $file = File::where('disk_name', post('name'))->where('field', 'CSV-IMPORTER')->first();
 
         return $file;
     }
 
+    /**
+     * Парсинг csv
+     * @param $file
+     * @return \Illuminate\Support\Collection|\October\Rain\Support\Collection
+     */
     public function parseCSV($file)
     {
         $path = Config::get('filesystems.disks.local.root', storage_path() . '/app') . '/' . $file->getDiskPath();
@@ -243,5 +239,4 @@ class Importer extends ComponentBase
         $rows = $reader->fetchAll();
         return collect($rows);
     }
-
 }
