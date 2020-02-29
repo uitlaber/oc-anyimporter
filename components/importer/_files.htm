@@ -1,0 +1,17 @@
+ <ul class="list-group">
+    {% for file in files %}
+        <li class="list-group-item" >
+            <div class="d-flex w-100 justify-content-between">
+            <h5 class="mb-1" >{{file.file_name}}</h5>
+            <small>{{file.created_at|date('d-m-Y')}}</small>
+            </div>
+
+        <div class="d-flex justify-content-between">
+         <a href="#" data-request="onSelectCSV" data-request-data="name:'{{file.disk_name}}'">Выбрать</a>
+         <a href="#" data-request="onDeleteCSV"
+         data-request-confirm="Удалить файл"
+         data-request-data="name:'{{file.disk_name}}'" data-request-flash>Удалить</a>
+         </div>
+        </li>
+    {% endfor %}
+</ul>

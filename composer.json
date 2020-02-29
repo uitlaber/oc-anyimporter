@@ -1,0 +1,7 @@
+{
+    "name": "october/october",
+    "require": {
+        "league/csv": "^8.0",
+        "pixel418/markdownify": "*"
+    }
+}

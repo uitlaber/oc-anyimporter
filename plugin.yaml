@@ -1,0 +1,6 @@
+plugin:
+    name: 'uit.importer::lang.plugin.name'
+    description: 'uit.importer::lang.plugin.description'
+    author: uit
+    icon: oc-icon-arrow-circle-down
+    homepage: ''

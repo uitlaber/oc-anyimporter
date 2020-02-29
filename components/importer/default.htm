@@ -1,0 +1,29 @@
+<div class="card p-3 mb-5">
+    <div class="row">
+        <div class="col-md-6 aviable-csv">
+            {% partial '@_files' files=__SELF__.files %}
+        </div>
+        <div class="col-md-6">
+            <form action="" data-request="onUpload" data-request-files data-request-flash >
+                <div class="form-group">
+                <input type="file" name="csv" >
+                </div>
+                <button class="btn btn-primary">Загрузить</button>
+            </form>
+        </div>
+    </div>
+    <div class="csv-info">
+        <div class="csv-settings"></div>
+    </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.52.0/mode/yaml/yaml.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css" />
+<style>
+    .aviable-csv{
+        overflow: auto;
+        height: 217px;
+    }
+</style>

@@ -1,0 +1,68 @@
+<div class="card mt-3 p-3">
+    {% set count = rows.count %}
+    <p>Колличество: {{count}} записей </p>
+    <div class="table-responsive">
+    <input type="number"  class="form-control mb-3"  name="row" data-track-input data-request="onLoadRow"
+    data-request-data="'name':'{{file.disk_name}}'"
+    >
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                {% for key, name in rows[0] %}
+                    <th data-id="{{key}}">{{name}}
+                    <span class="badge badge-danger">field-{{key}}</span>
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+         <tbody id="rowBody">
+        {% partial '@_row' rows="rows" index=2 %}
+        </tbody>
+
+
+
+    </table>
+    </div>
+    <form action="" data-request="onSave" id="my-form">
+        <textarea name="config" class="form-control mt-3 mb-3 yaml-code"  rows="15">{{file.description}}</textarea>
+        <input type="hidden" name="name" value="{{file.disk_name}}">
+        <button class="btn btn-primary mt-3" >Сохранить</button>
+        <button class="btn btn-danger mt-3" data-request="onImport" >Начать</button>
+    </form>
+    <div class="alert alert-info mt-3">
+        <ul>
+            <li>@default(ID колонки,значение по умолчанию)</li>
+        </ul>
+    </div>
+</div>
+
+
+
+<script>
+  var myTextarea = document.querySelector('.yaml-code')
+  var editor = CodeMirror.fromTextArea(myTextarea, {
+        lineNumbers: true,               // показывать номера строк
+        matchBrackets: true,             // подсвечивать парные скобки
+        mode: 'text/x-yaml', // стиль подсветки
+        indentUnit: 2,
+        extraKeys: {
+            "Ctrl-S": function(instance) {
+                $("#my-form").submit();
+            },
+        }
+    });
+
+
+
+
+</script>
+<style>
+    .table td, .table th {
+          text-overflow: ellipsis;
+            overflow: hidden;
+            width: 160px;
+            height: 1.2em;
+            white-space: nowrap;
+            max-width: 300px;
+    }
+</style>
