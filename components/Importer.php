@@ -36,7 +36,7 @@ class Importer extends ComponentBase
         }
     }
 
-    
+
     public function onRun()
     {
         $this->files = $this->loadAviableFiles();
@@ -134,6 +134,7 @@ class Importer extends ComponentBase
 
         $configs = Yaml::parse($file->description);
         $rows = $this->parseCSV($file);
+        $headers = $rows[0];
         unset($rows[0]);
 
         foreach ($configs as $type) {
@@ -151,18 +152,22 @@ class Importer extends ComponentBase
                     $uniques = explode(',', $config['unique']);
                 }
                 $primaryKey = $config['primaryKey'] ?? 'id';
-
+                $fieldObject = new Field($headers);
                 foreach ($config['fields'] as $field => $column) {
                     if (substr($column, 0, 7) === "column-") {
                         $columnID = str_replace('column-', '', $column);
                         $obj->{$field} = trim($row[$columnID]);
                     } elseif (substr($column, 0, 1) === "@") {
-                        $result = (new Field($column, $types, $row, $obj))->do();
-                        if (isset($result['is_object_value'])) {
-                            $obj->{$field} = $result['value'];
+
+                        $fieldOutput = $fieldObject->do($column, $types, $row, $obj);
+                        if (isset($fieldOutput['is_object_value'])) {
+                            $obj->{$field} = $fieldOutput['value'];
                         }
                     }
                 }
+
+
+
                 $obj->is_parsed = $file->id;
                 $obj->deleted_at = null;
                 $exists = null;
@@ -183,6 +188,26 @@ class Importer extends ComponentBase
                         $logs['error'][$config['model']][] = $rowIndex . ' ' . $typeName . ' ' . $e->getMessage();
                         continue 2;
                     }
+
+                    if(isset($fieldObject->relations['belongsToMany']) && count($fieldObject->relations['belongsToMany'])){
+                        foreach($fieldObject->relations['belongsToMany'] as $relationName => $relation_ids){
+
+                            $obj->$relationName()->attach($relation_ids);
+
+                        }
+                    }
+
+                    if(isset($fieldObject->relations['attach']) && count($fieldObject->relations['attach'])){
+                        foreach($fieldObject->relations['attach'] as $relationName => $relation){
+                            if(is_array($relation))
+                            {
+                                $obj->$relationName()->addMany($relation);
+                            }else{
+                                $obj->$relationName()->add($relation);
+                            }
+                        }
+                    }
+
                     $logs['added'][$config['model']][] = $obj->{$primaryKey};
                     $types[$typeName] = $obj;
                 }
@@ -194,6 +219,7 @@ class Importer extends ComponentBase
                 'model' => $type['model'],
                 'record_ids' => $logs['added'][$type['model']],
                 'errors' => $logs['error'][$type['model']],
+                'file_id' => $file->id
             ]);
         }
     }

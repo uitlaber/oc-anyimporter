@@ -1,16 +1,19 @@
 <div class="card mt-3 p-3">
     {% set count = rows.count %}
     <p>Колличество: {{count}} записей </p>
-    <div class="table-responsive">
+
     <input type="number"  class="form-control mb-3"  name="row" data-track-input data-request="onLoadRow"
-    data-request-data="'name':'{{file.disk_name}}'"
+           data-request-data="'name':'{{file.disk_name}}'"
     >
+
+    <div class="table-responsive">
+
     <table class="table table-bordered">
         <thead>
-            <tr>
+            <tr class="columns">
                 {% for key, name in rows[0] %}
-                    <th data-id="{{key}}">{{name}}
-                    <span class="badge badge-danger">field-{{key}}</span>
+                    <th data-id="{{key}}" onclick="insertColumn('column-'+{{key}})">{{name}}
+<!--                    <span class="badge badge-danger">column-{{key}}</span>-->
                     </th>
                 {% endfor %}
             </tr>
@@ -46,17 +49,70 @@
         mode: 'text/x-yaml', // стиль подсветки
         indentUnit: 2,
         extraKeys: {
+            "Ctrl-Space": "autocomplete",
             "Ctrl-S": function(instance) {
                 $("#my-form").submit();
             },
         }
     });
 
+  // editor.on('cursorActivity', function(){
+  //     var options = {
+  //         hint: function() {
+  //             return {
+  //                 from: editor.getDoc().getCursor(),
+  //                 to: editor.getDoc().getCursor(),
+  //                 list: [
+  //                     {% for key, name in rows[0] %}
+  //                       'column-{{key}}',
+  //                     {% endfor %}
+  //                 ]
+  //             }
+  //         }
+  //     };
+  //     editor.showHint(options);
+  // });
 
+  function insertColumn(text){
+      editor.replaceSelection(text, focus);
+      editor.focus();
+  }
 
+  const slider = document.querySelector('.table-responsive');
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  slider.addEventListener('mousedown', (e) => {
+      isDown = true;
+      slider.classList.add('active');
+      startX = e.pageX - slider.offsetLeft;
+      scrollLeft = slider.scrollLeft;
+  });
+  slider.addEventListener('mouseleave', () => {
+      isDown = false;
+      slider.classList.remove('active');
+  });
+  slider.addEventListener('mouseup', () => {
+      isDown = false;
+      slider.classList.remove('active');
+  });
+  slider.addEventListener('mousemove', (e) => {
+      if(!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - slider.offsetLeft;
+      const walk = (x - startX) * 3; //scroll-fast
+      slider.scrollLeft = scrollLeft - walk;
+  });
 
 </script>
 <style>
+    .table-responsive{
+        cursor: pointer;
+    }
+    .table-responsive.active{
+        cursor: grabbing;
+    }
     .table td, .table th {
           text-overflow: ellipsis;
             overflow: hidden;
@@ -64,5 +120,9 @@
             height: 1.2em;
             white-space: nowrap;
             max-width: 300px;
+
+    }
+    .table th:hover{
+        background: #eee;
     }
 </style>

@@ -4,30 +4,34 @@ namespace Uit\Importer\Classes;
 
 use Hash;
 use Markdownify\Converter;
+use System\Models\File;
 
 class Field
 {
     public $obj;
+    public $headers;
     public $row;
     public $column;
     public $types;
     public $params;
+    public $relations = [];
 
-    public function __construct($column, $types, $row, $obj)
+    public function __construct($headers)
     {
-        $this->obj = $obj;
-        $this->row = $row;
-        $this->column = $column;
-        $this->types = $types;
+        $this->headers = $headers;
     }
-
     /**
      * Начать волшебство
      *
      * @return void
      */
-    function do()
+    function do($column, $types, $row, $obj)
     {
+        $this->obj = $obj;
+        $this->row = $row;
+        $this->column = $column;
+        $this->types = $types;
+
         if (count($this->extractMethod()) == 2) {
             list($method, $params) = $this->extractMethod();
             $this->params = $params;
@@ -70,6 +74,33 @@ class Field
     }
 
     /**
+     * Рандомное значение из указанных
+     * @return array
+     */
+    public function array_rand()
+    {
+        $random_item = $this->params[array_rand($this->params,1)];
+        return ['value' => $random_item, 'is_object_value' => true];
+    }
+
+    public function toArray()
+    {
+        list($skip, $name, $value) = $this->params;
+        $length = count($this->row);
+        $data = [];
+        for ($i = $skip; $i < $length; $i ++){
+            if($this->rowValue($i)){
+                $data[] = [
+                    $name => $this->headers[$i],
+                    $value => $this->rowValue($i)
+                ];
+            }
+        }
+//        dd($data);
+        return ['value' => $data, 'is_object_value' => true];
+    }
+
+    /**
      * Значение по умолчанию
      * Если в колонке нет данных то выставляется значение по умолчанию
      *
@@ -94,14 +125,79 @@ class Field
      * @param [type] $key
      * @return void
      */
-    public function rowValue($key)
+    public function rowValue($headerID)
     {
-        if (substr($key, 0, 7) === "column-") {
-            $key = str_replace('column-', '', $key);
+        if (substr($headerID, 0, 7) === "column-") {
+            $headerID = str_replace('column-', '', $headerID);
         }
 
-        return $this->row[$key] ?? null;
+        return $this->row[$headerID] ?? null;
     }
+
+    /**
+     * @belongsToMany:MihailBishkek\Birzha\Models\Material,title,column-30,materials
+     */
+    public function belongsToMany()
+    {
+        list($relationModel, $searchColumn, $columnID, $relationName) = $this->params;
+        if($searchText = $this->rowValue($columnID)) {
+            $result = (new $relationModel)->where($searchColumn, $searchText)->first();
+            if(is_null($result)) return;
+            $this->relations['belongsToMany'][$relationName][] = $result->id;
+        }
+    }
+
+    /**
+     * Relation Загрузка одного фала
+     * @return void|null
+     */
+    public function attachOne()
+    {
+        list($from, $headerID, $relationName) = $this->params;
+        $file = null;
+        $value = $this->rowValue($headerID);
+        if ($value == '' || is_null($value)) return null;
+        try {
+            switch ($from) {
+                case 'url':
+                    $file = (new File())->fromUrl($this->rowValue($headerID));
+                case 'file':
+                    $file = (new File())->fromFile(storage_path() . '/' . $this->rowValue($headerID));
+            }
+        } catch (\Exception $e) {
+        }
+        if (is_null($file)) return;
+
+        $this->relations['attach'][$relationName] = $file;
+    }
+
+    /**
+     * Relation  Загрузка нексколько файлов
+     * @return void|null
+     */
+    public function attachMany()
+    {
+        list($from, $headerID, $relationName) = $this->params;
+        $file = null;
+        $value = $this->rowValue($headerID);
+        if ($value == '' || is_null($value)) return null;
+        $links = explode(',', $value);
+        foreach ($links as $link) {
+            try {
+                switch ($from) {
+                    case 'url':
+                        $file = (new File())->fromUrl($this->rowValue($headerID));
+                    case 'file':
+                        $file = (new File())->fromFile(storage_path() . '/' . $this->rowValue($headerID));
+                }
+            } catch (\Exception $e) {
+            }
+            if (is_null($file)) return;
+
+            $this->relations['attach'][$relationName][] = $file;
+        }
+    }
+
 
     /**
      * Хеш строки
