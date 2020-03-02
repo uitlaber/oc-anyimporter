@@ -19,7 +19,7 @@
             </tr>
         </thead>
          <tbody id="rowBody">
-        {% partial '@_row' rows="rows" index=2 %}
+            {% partial '@_row' rows="rows" index=2 %}
         </tbody>
 
 
@@ -32,18 +32,14 @@
         <button class="btn btn-primary mt-3" >Сохранить</button>
         <button class="btn btn-danger mt-3" data-request="onImport" >Начать</button>
     </form>
-    <div class="alert alert-info mt-3">
-        <ul>
-            <li>@default(ID колонки,значение по умолчанию)</li>
-        </ul>
+    <div class="alert alert-info mt-3 error-logs">
+
     </div>
 </div>
 
-
-
 <script>
-  var myTextarea = document.querySelector('.yaml-code')
-  var editor = CodeMirror.fromTextArea(myTextarea, {
+    var myTextarea = document.querySelector('.yaml-code')
+    var editor = CodeMirror.fromTextArea(myTextarea, {
         lineNumbers: true,               // показывать номера строк
         matchBrackets: true,             // подсвечивать парные скобки
         mode: 'text/x-yaml', // стиль подсветки
@@ -56,56 +52,58 @@
         }
     });
 
-  // editor.on('cursorActivity', function(){
-  //     var options = {
-  //         hint: function() {
-  //             return {
-  //                 from: editor.getDoc().getCursor(),
-  //                 to: editor.getDoc().getCursor(),
-  //                 list: [
-  //                     {% for key, name in rows[0] %}
-  //                       'column-{{key}}',
-  //                     {% endfor %}
-  //                 ]
-  //             }
-  //         }
-  //     };
-  //     editor.showHint(options);
-  // });
+    var slider = document.querySelector('.table-responsive');
+    var isDown = false;
+    var startX;
+    var scrollLeft;
 
-  function insertColumn(text){
-      editor.replaceSelection(text, focus);
-      editor.focus();
-  }
+    slider.addEventListener('mousedown', (e) => {
+        isDown = true;
+        slider.classList.add('active');
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+    });
+    slider.addEventListener('mouseleave', () => {
+        isDown = false;
+        slider.classList.remove('active');
+    });
+    slider.addEventListener('mouseup', () => {
+        isDown = false;
+        slider.classList.remove('active');
+    });
+    slider.addEventListener('mousemove', (e) => {
+        if(!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 3; //scroll-fast
+        slider.scrollLeft = scrollLeft - walk;
+    });
 
-  const slider = document.querySelector('.table-responsive');
-  let isDown = false;
-  let startX;
-  let scrollLeft;
+    // editor.on('cursorActivity', function(){
+    //     var options = {
+    //         hint: function() {
+    //             return {
+    //                 from: editor.getDoc().getCursor(),
+    //                 to: editor.getDoc().getCursor(),
+    //                 list: [
+    //                     {% for key, name in rows[0] %}
+    //                       'column-{{key}}',
+    //                     {% endfor %}
+    //                 ]
+    //             }
+    //         }
+    //     };
+    //     editor.showHint(options);
+    // });
 
-  slider.addEventListener('mousedown', (e) => {
-      isDown = true;
-      slider.classList.add('active');
-      startX = e.pageX - slider.offsetLeft;
-      scrollLeft = slider.scrollLeft;
-  });
-  slider.addEventListener('mouseleave', () => {
-      isDown = false;
-      slider.classList.remove('active');
-  });
-  slider.addEventListener('mouseup', () => {
-      isDown = false;
-      slider.classList.remove('active');
-  });
-  slider.addEventListener('mousemove', (e) => {
-      if(!isDown) return;
-      e.preventDefault();
-      const x = e.pageX - slider.offsetLeft;
-      const walk = (x - startX) * 3; //scroll-fast
-      slider.scrollLeft = scrollLeft - walk;
-  });
+    function insertColumn(text){
+        editor.replaceSelection(text, focus);
+        editor.focus();
+    }
+
 
 </script>
+
 <style>
     .table-responsive{
         cursor: pointer;

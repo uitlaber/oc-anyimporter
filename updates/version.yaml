@@ -1,14 +1,5 @@
 1.0.1:
     - 'Initialize plugin.'
-1.0.2:
-    - 'Created table uit_importer_projects'
-    - builder_table_create_uit_importer_projects.php
-1.0.3:
-    - 'Updated table uit_importer_projects'
-    - builder_table_update_uit_importer_projects.php
-1.0.4:
-    - 'Drop table uit_importer_projects'
-    - builder_table_delete_uit_importer_projects.php
 1.0.5:
     - 'Created table uit_importer_logs'
     - builder_table_create_uit_importer_logs.php

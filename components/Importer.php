@@ -87,6 +87,25 @@ class Importer extends ComponentBase
         ];
     }
 
+    public function onDeleteParsedData()
+    {
+        $file = $this->getCSVFile();
+        if (is_null($file)) {
+            return null;
+        }
+        $configs = [];
+        $configs = Yaml::parse($file->description);
+
+        $logs = ImportLog::where('file_id', $file->id)->get();
+        foreach ($logs as $log) {
+            foreach ($configs as $type) {
+                $model = $log->model;
+                $model::withTrashed()->whereIn('id', $log->record_ids)->forceDelete();
+            }
+            $log->delete();
+        }
+    }
+
     /**
      * Выбрать файл из списка
      * @return array|null
@@ -128,8 +147,7 @@ class Importer extends ComponentBase
         if (is_null($file)) {
             return null;
         }
-        $configs = [];
-        $rows = [];
+
         $logs = [];
 
         $configs = Yaml::parse($file->description);
@@ -137,83 +155,113 @@ class Importer extends ComponentBase
         $headers = $rows[0];
         unset($rows[0]);
 
+        $importLog = ImportLog::where('file_id', $file->id)->get();
+        if ( $importLog->count()) {
+            foreach ($importLog as $log) {
+                $model = $log->model;
+                $model::withTrashed()->whereIn('id', $log->record_ids)->forceDelete();
+                $log->delete();
+            }
+        }
         foreach ($configs as $type) {
-            $type['model']::withTrashed()->where('is_parsed', $file->id)->forceDelete();
             $logs['error'][$type['model']] = [];
             $logs['added'][$type['model']] = [];
+            $logs['skipped'][$type['model']] = [];
         }
 
         foreach ($rows as $rowIndex => $row) {
             $types = [];
+
             foreach ($configs as $typeName => $config) {
+
                 $obj = new $config['model'];
-                $uniques = [];
-                if (isset($config['unique'])) {
-                    $uniques = explode(',', $config['unique']);
-                }
+
+                // if (isset($config['contains'])) {
+                //     $contains = explode(',', $config['contains']);
+                //     list($cModel, $cHeaderID, $cColumn) = $contains;
+                //     $cExists = false;
+                //     if (isset($row[$cHeaderID])) {
+                //         $cExists = (new $cModel)->where($cColumn, $row[$cHeaderID])->exists();
+                //     }
+                //     if (!$cExists) {
+                //         $logs['skipped'][$type['model']][] = $rowIndex.' пропущен - не потходит по параметрам';
+                //         break 1;
+                //     }
+                // }
+
+                //Уникальный ключь в таблице если не указан то по умолчанию ID
                 $primaryKey = $config['primaryKey'] ?? 'id';
-                $fieldObject = new Field($headers);
+
+                $fieldObject = new Field($headers, $row, $obj);
+                //Тут начинается чудо :D
                 foreach ($config['fields'] as $field => $column) {
                     if (substr($column, 0, 7) === "column-") {
                         $columnID = str_replace('column-', '', $column);
                         $obj->{$field} = trim($row[$columnID]);
                     } elseif (substr($column, 0, 1) === "@") {
-
-                        $fieldOutput = $fieldObject->do($column, $types, $row, $obj);
+                        $fieldOutput = $fieldObject->do($column, $types);
                         if (isset($fieldOutput['is_object_value'])) {
                             $obj->{$field} = $fieldOutput['value'];
                         }
                     }
                 }
-
-
-
-                $obj->is_parsed = $file->id;
+              
                 $obj->deleted_at = null;
+
+                //Проверка на ункикальность
                 $exists = null;
-                if (count($uniques)) {
-                    foreach ($uniques as $column) {
-                        $exists = (new $config['model'])->where($column, $obj->{$column})->first();
-                        if (!is_null($exists)) {
-                            break;
-                        };
+                if (isset($config['unique'])) {
+                    $uniques = explode(',', $config['unique']);
+                    if (count($uniques) && is_array($uniques)) {
+
+                        foreach ($uniques as $column) {
+                            //@TODO что то не так тут
+                            $exists = (new $config['model'])->where($column, $obj->{$column})->first();
+                            if (!is_null($exists)) {
+                                break;
+                            };
+                        }
                     }
                 }
+
+                //Если в таблице уже существует то не записываем
                 if (!is_null($exists)) {
                     $types[$typeName] = $exists;
+                    // $logs['skipped'][$type['model']][] = $rowIndex . ' пропущен - уже существует';
+
                 } else {
                     try {
                         $obj->save();
+                        $types[$typeName] = $obj;
                     } catch (\Exception $e) {
                         $logs['error'][$config['model']][] = $rowIndex . ' ' . $typeName . ' ' . $e->getMessage();
                         continue 2;
                     }
 
-                    if(isset($fieldObject->relations['belongsToMany']) && count($fieldObject->relations['belongsToMany'])){
-                        foreach($fieldObject->relations['belongsToMany'] as $relationName => $relation_ids){
-
-                            $obj->$relationName()->attach($relation_ids);
-
+                    if (isset($fieldObject->relations['belongsToMany']) && count($fieldObject->relations['belongsToMany'])) {
+                        foreach ($fieldObject->relations['belongsToMany'] as $relationName => $relation_ids) {
+                            $obj->$relationName()->sync($relation_ids);
                         }
                     }
 
-                    if(isset($fieldObject->relations['attach']) && count($fieldObject->relations['attach'])){
-                        foreach($fieldObject->relations['attach'] as $relationName => $relation){
-                            if(is_array($relation))
-                            {
+                    if (isset($fieldObject->relations['attach']) && count($fieldObject->relations['attach'])) {
+                        foreach ($fieldObject->relations['attach'] as $relationName => $relation) {
+                            if (is_array($relation)) {
                                 $obj->$relationName()->addMany($relation);
-                            }else{
+                            }else {
                                 $obj->$relationName()->add($relation);
                             }
                         }
                     }
 
-                    $logs['added'][$config['model']][] = $obj->{$primaryKey};
-                    $types[$typeName] = $obj;
+                    $logs['added'][$config['model']][] = $rowIndex.' добавлен ID:'.$obj->{$primaryKey};
+
                 }
             }
         }
 
+        // Запись в логи каждуб группу типа
+        $reportLogs = [];
         foreach ($configs as $type) {
             ImportLog::create([
                 'model' => $type['model'],
@@ -221,7 +269,14 @@ class Importer extends ComponentBase
                 'errors' => $logs['error'][$type['model']],
                 'file_id' => $file->id
             ]);
+            $reportLogs[] = $logs['error'][$type['model']];
+            $reportLogs[] = $logs['added'][$type['model']];
+            $reportLogs[] = $logs['skipped'][$type['model']];
         }
+
+        return [
+            '.error-logs' => $this->renderPartial('@_logs', ['logs' => $reportLogs])
+        ];
     }
 
     /**

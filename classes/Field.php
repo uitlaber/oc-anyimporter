@@ -8,27 +8,27 @@ use System\Models\File;
 
 class Field
 {
-    public $obj;
     public $headers;
     public $row;
+    public $obj;
     public $column;
     public $types;
     public $params;
     public $relations = [];
 
-    public function __construct($headers)
+    public function __construct($headers, $row, $obj)
     {
         $this->headers = $headers;
+        $this->row = $row;
+        $this->obj = $obj;
     }
     /**
      * Начать волшебство
      *
      * @return void
      */
-    function do($column, $types, $row, $obj)
+    function do($column, $types)
     {
-        $this->obj = $obj;
-        $this->row = $row;
         $this->column = $column;
         $this->types = $types;
 
@@ -140,11 +140,17 @@ class Field
     public function belongsToMany()
     {
         list($relationModel, $searchColumn, $columnID, $relationName) = $this->params;
-        if($searchText = $this->rowValue($columnID)) {
-            $result = (new $relationModel)->where($searchColumn, $searchText)->first();
-            if(is_null($result)) return;
-            $this->relations['belongsToMany'][$relationName][] = $result->id;
+        $searchTexts = $this->rowValue($columnID);
+        $searchTextsArray = explode(',',$searchTexts);
+        foreach ($searchTextsArray as $searchText){
+            if($searchText) {
+                $result = (new $relationModel)->where($searchColumn, $searchText)->first();
+                if(is_null($result)) return;
+                $this->relations['belongsToMany'][$relationName][] = $result->id;
+            }
         }
+
+
     }
 
     /**
