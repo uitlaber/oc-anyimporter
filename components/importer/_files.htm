@@ -1,9 +1,10 @@
- <ul class="list-group">
+<h3>Загруженные файлы</h3>
+<ul class="list-group">
     {% for file in files %}
      {% set mb = file.file_size/1024/1024.4   %}
         <li class="list-group-item" >
             <div class="d-flex w-100 justify-content-between">
-            <h5 class="mb-1" >{{file.file_name}} ({{mb|round}}MB)</h5>
+            <h5 class="mb-1" >{{file.title}} ({{mb|round}}MB)</h5>
 
             <small>{{file.created_at|date('d-m-Y')}}</small>
             </div>
@@ -11,7 +12,9 @@
         <div class="d-flex justify-content-between">
          <a href="#" class="btn btn-success btn-sm" data-request="onSelectCSV" data-request-data="name:'{{file.disk_name}}'">Выбрать</a>
          <div>
-             <a href="#" class="btn btn-link btn-sm" data-request="onDeleteParsedData" data-request-data="name:'{{file.disk_name}}'">Удалить добавленные данные</a>
+             <a href="#" class="btn btn-link btn-sm" data-request="onDeleteImportedData"
+                data-request-confirm="Удалить загруженные данные"
+                data-request-data="name:'{{file.disk_name}}'">Удалить добавленные данные</a>
              <a href="#" class="btn btn-link btn-sm"
                 data-request="onDeleteCSV"
                 data-request-confirm="Удалить файл"
@@ -19,5 +22,12 @@
          </div>
          </div>
         </li>
+    {% else %}
+     <li class="list-group-item">Пусто</li>
     {% endfor %}
 </ul>
+
+ <script>
+     var objDiv = document.querySelector(".aviable-csv");
+     objDiv.scrollTop = objDiv.scrollHeight;
+ </script>

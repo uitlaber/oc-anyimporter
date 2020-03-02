@@ -27,12 +27,15 @@
     </table>
     </div>
     <form action="" data-request="onSave" id="my-form">
+        <div class="text-right mt-2">
+            <button class="btn btn-primary mt-3" >Сохранить</button>
+            <button class="btn btn-danger mt-3" data-request="onImport" >Начать</button>
+        </div>
+
         <textarea name="config" class="form-control mt-3 mb-3 yaml-code"  rows="15">{{file.description}}</textarea>
         <input type="hidden" name="name" value="{{file.disk_name}}">
-        <button class="btn btn-primary mt-3" >Сохранить</button>
-        <button class="btn btn-danger mt-3" data-request="onImport" >Начать</button>
     </form>
-    <div class="alert alert-info mt-3 error-logs">
+    <div class="error-logs">
 
     </div>
 </div>
@@ -51,6 +54,8 @@
             },
         }
     });
+
+    editor.setSize(1000, 800);
 
     var slider = document.querySelector('.table-responsive');
     var isDown = false;

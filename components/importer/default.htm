@@ -5,8 +5,12 @@
         </div>
         <div class="col-md-6">
             <form action="" data-request="onUpload" data-request-files data-request-flash >
+                <h3>Загрузить новый CSV</h3>
                 <div class="form-group">
-                <input type="file" name="csv" >
+                    <input type="text" name="title" class="form-control" placeholder="Название">
+                </div>
+                <div class="form-group">
+                <input type="file" name="csv"  >
                 </div>
                 <button class="btn btn-primary">Загрузить</button>
             </form>
@@ -29,6 +33,6 @@
 <style>
     .aviable-csv{
         overflow: auto;
-        height: 217px;
+        max-height: 500px;
     }
 </style>

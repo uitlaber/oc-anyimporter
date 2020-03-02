@@ -62,6 +62,17 @@ class Field
     }
 
     /**
+     * Округление числа
+     * @return array
+     */
+    public function round()
+    {
+        list($columnID, $precision) = $this->params;
+        $value = $this->rowValue($columnID);
+        return ['value' => round($value, $precision), 'is_object_value' => true];
+    }
+
+    /**
      * Рандомное значение
      *
      * @return void

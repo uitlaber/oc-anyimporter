@@ -20,7 +20,7 @@ class Importer extends ComponentBase
     {
         return [
             'name' => 'Importer Component',
-            'description' => 'No description provided yet...',
+            'description' => 'Плагин для импорта из CSV',
         ];
     }
 
@@ -51,10 +51,10 @@ class Importer extends ComponentBase
      */
     public function onUpload()
     {
+        $title = (post('title') != '')?post('title'):'Без имени';
         $csv = Input::file('csv');
-        $file = (new File(['field' => 'CSV-IMPORTER']))->fromPost($csv);
+        $file = (new File(['field' => 'CSV-IMPORTER','title' => $title]))->fromPost($csv);
         $file->save();
-
         return [
             '.aviable-csv' => $this->renderPartial('@_files', ['files' => $this->loadAviableFiles()]),
         ];
@@ -87,7 +87,7 @@ class Importer extends ComponentBase
         ];
     }
 
-    public function onDeleteParsedData()
+    public function onDeleteImportedData()
     {
         $file = $this->getCSVFile();
         if (is_null($file)) {
@@ -205,7 +205,7 @@ class Importer extends ComponentBase
                         }
                     }
                 }
-              
+
                 $obj->deleted_at = null;
 
                 //Проверка на ункикальность
@@ -254,7 +254,7 @@ class Importer extends ComponentBase
                         }
                     }
 
-                    $logs['added'][$config['model']][] = $rowIndex.' добавлен ID:'.$obj->{$primaryKey};
+                    $logs['added'][$config['model']][] = $typeName.' '.$rowIndex.' добавлен ID:'.$obj->{$primaryKey};
 
                 }
             }
