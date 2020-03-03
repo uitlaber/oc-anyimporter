@@ -1,4 +1,6 @@
-{% for log in logs %}
-    {{d(log)}}
+{% for type, ids in record_ids %}
+<div class="alert alert-warning">
+    <p>Тип: {{type}}</p>
+    <p>Добавлено: {{ids|length}}</p>
+</div>
 {% endfor %}
-
